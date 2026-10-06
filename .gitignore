@@ -6,14 +6,9 @@
 .env.*.local
 certs/
 
-# Claude Code local settings (contains API tokens)
-.claude/settings.local.json
+# Claude Code session files (personal settings, API tokens, MCP servers)
+.claude/
 .mcp.json
-
-# MCP server binaries & dependencies (may contain embedded credentials)
-.claude/mcp-servers/
-.claude/mcp-servers/*/node_modules
-.claude/mcp-servers/*/node_modules/
 
 # Model weights (large — download via scripts/download_models.sh)
 models/
@@ -58,5 +53,6 @@ services/frontend/dist/
 .DS_Store
 Thumbs.db
 
-# Research and planning docs (internal)
+# Internal planning and session docs (keep local only)
 /research/
+/build_instructions/

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the minimal local dev stack for CozmoAI Library Claim Agent.
+# Build the minimal local dev stack for InsureAI Library Claim Agent.
 #
 # Builds (in order): postgres, redis, backend, agents, vision, frontend
 # Skips:             livekit, worker-book-id, worker-pricing, worker-measurement

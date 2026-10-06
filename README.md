@@ -7,7 +7,7 @@
   ██║     ██║   ██║ ███╔╝  ██║╚██╔╝██║██║   ██║    ██╔══██║██║
   ╚██████╗╚██████╔╝███████╗██║ ╚═╝ ██║╚██████╔╝    ██║  ██║██║
    ╚═════╝ ╚═════╝ ╚══════╝╚═╝     ╚═╝ ╚═════╝     ╚═╝  ╚═╝╚═╝
-         📚  Point. Sweep. Claim.  —  CozmoAI Library Agent
+         📚  Point. Sweep. Claim.  —  InsureAI Library Agent
 ```
 
 An AI insurance claim agent that inventories a home library by camera.
@@ -19,7 +19,7 @@ in real time. When you're done, it hands you a priced claim packet ZIP.
 
 ## What it does
 
-CozmoAI turns a live camera feed into a complete, priced inventory of every
+InsureAI turns a live camera feed into a complete, priced inventory of every
 book on a shelf — no barcode scanner, no manual typing, no GPU required for
 local development. A YOLOv8 ONNX detector finds spines in each frame, Claude
 Haiku vision OCRs the text, Open Library resolves the ISBN, and Google Books
