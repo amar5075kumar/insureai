@@ -1,12 +1,16 @@
-# Stage 1: export yolov8n.onnx (throw-away — only the 6 MB file is kept)
+# Stage 1: export yolov8n.onnx (throw-away — only the 13 MB file is kept)
+# Uses CPU-only torch (~160 MB) instead of CUDA torch (~2 GB)
 FROM python:3.12-slim AS model-exporter
-# opencv-python (pulled by ultralytics) needs libGL + libxcb on slim images
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1 \
-    libxcb1 \
-    libglib2.0-0 \
+    libgl1 libxcb1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir ultralytics
+# Install CPU torch first so ultralytics doesn't pull CUDA variant
+# --trusted-host handles corporate SSL inspection proxies
+RUN pip install --no-cache-dir \
+    --trusted-host download.pytorch.org \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    torch && \
+    pip install --no-cache-dir ultralytics
 WORKDIR /export
 RUN python -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', imgsz=640)"
 
