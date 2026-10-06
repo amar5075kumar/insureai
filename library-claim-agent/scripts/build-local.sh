@@ -13,7 +13,8 @@ set -euo pipefail
 # ── Config ────────────────────────────────────────────────────────────────────
 BUILD_SERVICES=(postgres redis backend agents vision worker-lite frontend)
 SKIP_SERVICES=(livekit worker-book-id worker-pricing worker-measurement)
-BASE_IMAGE="python:3.12-slim"
+# All base images needed by the build services
+BASE_IMAGES=("python:3.12-slim" "postgres:16-alpine" "redis:7-alpine" "node:20-alpine" "nginx:alpine")
 PULL_ATTEMPTS=3
 PULL_SLEEP=5
 
@@ -55,23 +56,25 @@ printf '  Project dir: %s\n' "${PROJECT_DIR}"
 printf '  Skipping:    %s\n' "${SKIP_SERVICES[*]}"
 [[ -n "${NO_CACHE}" ]] && printf '  Mode:        --no-cache\n'
 
-# ── Pull base image ───────────────────────────────────────────────────────────
-section "Base image"
-info "Pulling ${BASE_IMAGE} (needed by backend, agents, vision)..."
+# ── Pull all base images ──────────────────────────────────────────────────────
+section "Base images"
+info "Pulling all base images with retry (corporate networks may drop connections)..."
 
-pulled=false
-for (( i = 1; i <= PULL_ATTEMPTS; i++ )); do
-  if docker pull "${BASE_IMAGE}"; then
-    pulled=true
-    break
-  fi
-  if (( i < PULL_ATTEMPTS )); then
-    info "Attempt ${i}/${PULL_ATTEMPTS} failed — retrying in ${PULL_SLEEP}s..."
-    sleep "${PULL_SLEEP}"
-  fi
+for BASE_IMAGE in "${BASE_IMAGES[@]}"; do
+  pulled=false
+  for (( i = 1; i <= PULL_ATTEMPTS; i++ )); do
+    if docker pull "${BASE_IMAGE}"; then
+      pulled=true
+      break
+    fi
+    if (( i < PULL_ATTEMPTS )); then
+      info "  Attempt ${i}/${PULL_ATTEMPTS} for ${BASE_IMAGE} failed — retrying in ${PULL_SLEEP}s..."
+      sleep "${PULL_SLEEP}"
+    fi
+  done
+  "${pulled}" || { fail "Could not pull ${BASE_IMAGE} after ${PULL_ATTEMPTS} attempts"; exit 1; }
+  success "${BASE_IMAGE} ready"
 done
-"${pulled}" || { fail "Could not pull ${BASE_IMAGE} after ${PULL_ATTEMPTS} attempts"; exit 1; }
-success "Base image ready"
 
 # ── Build each service ────────────────────────────────────────────────────────
 section "Building services"
