@@ -93,7 +93,10 @@ export function SetupScreen({ country, currency, starting, onCountryChange, onSt
   const [configOpen, setConfigOpen] = useState(false)
   const [config, setConfig] = useState<LlmConfig>(DEFAULT_CONFIG)
   const [saved, setSaved] = useState(false)
+  const [testState, setTestState] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
+  const [testMsg, setTestMsg] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
+  const API_URL_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
   const pickerRef = useRef<HTMLDivElement>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -123,6 +126,37 @@ export function SetupScreen({ country, currency, starting, onCountryChange, onSt
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => setSaved(false), 2200)
   }, [config])
+
+  const testConnection = useCallback(async () => {
+    setTestState('testing')
+    setTestMsg('')
+    try {
+      const res = await fetch(`${API_URL_BASE}/config/test-llm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: config.provider,
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl,
+          bearerToken: config.bearerToken,
+          region: config.region,
+          accessKey: config.accessKey,
+          secretKey: config.secretKey,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setTestState('ok')
+        setTestMsg(`Connected · ${data.latency_ms}ms`)
+      } else {
+        setTestState('fail')
+        setTestMsg(data.error || 'Connection failed')
+      }
+    } catch (e) {
+      setTestState('fail')
+      setTestMsg('Could not reach backend')
+    }
+  }, [config, API_URL_BASE])
 
   const selected = COUNTRIES.find(c => c.code === country) ?? COUNTRIES[0]
 
@@ -213,6 +247,23 @@ export function SetupScreen({ country, currency, starting, onCountryChange, onSt
 
               <div className={styles.configFooter}>
                 <button type="button" className={styles.saveBtn} onClick={saveConfig}>{saved ? '✓ Saved' : 'Save'}</button>
+                <button
+                  type="button"
+                  className={styles.saveBtn}
+                  onClick={testConnection}
+                  disabled={testState === 'testing'}
+                  style={{
+                    borderColor: testState === 'ok' ? '#16a34a' : testState === 'fail' ? '#dc2626' : undefined,
+                    color: testState === 'ok' ? '#16a34a' : testState === 'fail' ? '#dc2626' : undefined,
+                  }}
+                >
+                  {testState === 'testing' ? '⏳ Testing…' : testState === 'ok' ? '✓ Test OK' : testState === 'fail' ? '✗ Failed' : '⚡ Test'}
+                </button>
+                {testMsg && (
+                  <span style={{ fontSize: '0.72rem', color: testState === 'ok' ? '#16a34a' : '#dc2626', marginLeft: 4 }}>
+                    {testMsg}
+                  </span>
+                )}
                 <p className={styles.localNote}>Stored locally in your browser only</p>
               </div>
             </div>

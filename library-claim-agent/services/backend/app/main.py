@@ -11,7 +11,7 @@ import redis.asyncio as aioredis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import sweeps, websocket, webhooks
+from app.api import sweeps, websocket, webhooks, config
 from app.config import settings
 from app.database import init_db
 
@@ -78,6 +78,7 @@ app.add_middleware(
 app.include_router(sweeps.router, prefix="/sweeps", tags=["sweeps"])
 app.include_router(websocket.router, tags=["websocket"])
 app.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
+app.include_router(config.router, tags=["config"])
 
 
 # ── Health check ─────────────────────────────────────────────────────────────
