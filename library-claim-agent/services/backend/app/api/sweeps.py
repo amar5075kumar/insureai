@@ -24,6 +24,7 @@ class CreateSweepRequest(BaseModel):
     country: str = Field("GB", min_length=2, max_length=2)
     currency: str = Field("GBP", min_length=3, max_length=3)
     device: Optional[str] = None
+    llm_config: Optional[dict] = None   # forwarded from frontend localStorage
 
 
 class SweepResponse(BaseModel):
@@ -214,10 +215,20 @@ async def create_sweep(body: CreateSweepRequest) -> SweepResponse:
     from app.api.webhooks import _redis
     import json as _json
     if _redis:
-        await _redis.publish(
-            f"sweep_created:{sweep_id}",
-            _json.dumps({"country": body.country.upper(), "currency": body.currency.upper()}),
-        )
+        payload: dict = {
+            "country": body.country.upper(),
+            "currency": body.currency.upper(),
+        }
+        # Forward frontend llm_config so agents + worker-lite use the browser-saved keys
+        if body.llm_config:
+            payload["llm_config"] = body.llm_config
+            # Also store in Redis so worker-lite can read it per sweep
+            await _redis.set(
+                f"llm_config:{sweep_id}",
+                _json.dumps(body.llm_config),
+                ex=3600,   # expire after 1 hour
+            )
+        await _redis.publish(f"sweep_created:{sweep_id}", _json.dumps(payload))
 
     ws_url = f"ws://localhost:8000/ws/{sweep_id}"
     logger.info(f"Created sweep {sweep_id} ({body.country}/{body.currency})")

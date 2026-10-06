@@ -29,10 +29,17 @@ export function App() {
   const handleStart = async () => {
     setStarting(true)
     try {
+      // Read LLM config saved by ⚙ Configure AI Provider panel
+      let llm_config: Record<string, string> | null = null
+      try {
+        const saved = localStorage.getItem('llm_config')
+        if (saved) llm_config = JSON.parse(saved)
+      } catch {}
+
       const res = await fetch(`${API_URL}/sweeps`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ country, currency }),
+        body: JSON.stringify({ country, currency, llm_config }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()

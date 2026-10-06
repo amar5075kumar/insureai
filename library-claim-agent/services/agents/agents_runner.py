@@ -149,6 +149,22 @@ async def main() -> None:
             continue
 
         data = json.loads(message["data"])
+
+        # Apply frontend llm_config to env vars for this process so llm_factory picks them up
+        llm_config = data.get("llm_config") or {}
+        if llm_config.get("provider"):
+            os.environ["LLM_PROVIDER"] = llm_config["provider"]
+        if llm_config.get("apiKey"):
+            os.environ["ANTHROPIC_API_KEY"] = llm_config["apiKey"]
+        if llm_config.get("baseUrl"):
+            os.environ["BEDROCK_BASE_URL"] = llm_config["baseUrl"]
+        if llm_config.get("bearerToken"):
+            os.environ["ANTHROPIC_API_KEY"] = llm_config["bearerToken"]
+        if llm_config.get("region"):
+            os.environ["AWS_REGION"] = llm_config["region"]
+        if llm_config:
+            logger.info(f"Using frontend LLM config: provider={os.environ.get('LLM_PROVIDER')}")
+
         task = asyncio.create_task(
             handle_new_sweep(sweep_id, data.get("country", "GB"), data.get("currency", "GBP"))
         )

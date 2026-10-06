@@ -40,7 +40,22 @@ def _load_crop(crop_s3_key: str) -> bytes | None:
     return None
 
 
-def _identify_with_claude(image_bytes: bytes) -> dict:
+def _load_sweep_llm_config(sweep_id: str) -> dict:
+    """Read llm_config saved by the frontend for this sweep (from Redis)."""
+    try:
+        import redis as _redis_sync
+        r = _redis_sync.from_url(os.environ.get("REDIS_URL", "redis://redis:6379/0"), decode_responses=True)
+        raw = r.get(f"llm_config:{sweep_id}")
+        r.close()
+        if raw:
+            import json as _j
+            return _j.loads(raw)
+    except Exception:
+        pass
+    return {}
+
+
+def _identify_with_claude(image_bytes: bytes, sweep_id: str = "") -> dict:
     """
     Send spine crop to Claude Haiku vision.
     Uses Enterprise Gateway (bearer token) if BEDROCK_BASE_URL is set,
@@ -49,8 +64,15 @@ def _identify_with_claude(image_bytes: bytes) -> dict:
     """
     import httpx2 as _httpx
 
-    BEDROCK_BASE_URL = os.environ.get("BEDROCK_BASE_URL", "")
-    BEDROCK_MODEL = os.environ.get("BEDROCK_MODEL", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
+    # Check sweep-specific config from frontend (overrides env vars)
+    sweep_cfg = _load_sweep_llm_config(sweep_id) if sweep_id else {}
+    provider = sweep_cfg.get("provider", os.environ.get("LLM_PROVIDER", "anthropic"))
+
+    # Resolve credentials from sweep config or env
+    BEDROCK_BASE_URL  = sweep_cfg.get("baseUrl", os.environ.get("BEDROCK_BASE_URL", ""))
+    BEDROCK_MODEL     = os.environ.get("BEDROCK_MODEL", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
+    BEARER_TOKEN      = sweep_cfg.get("bearerToken") or sweep_cfg.get("apiKey") or ANTHROPIC_API_KEY
+    DIRECT_API_KEY    = sweep_cfg.get("apiKey", ANTHROPIC_API_KEY)
     BEDROCK_AUTH_TYPE = os.environ.get("BEDROCK_AUTH_TYPE", "aws")
 
     b64 = base64.standard_b64encode(image_bytes).decode()
@@ -81,7 +103,7 @@ def _identify_with_claude(image_bytes: bytes) -> dict:
             with _httpx.Client(verify=SSL_VERIFY, timeout=30.0) as client:
                 resp = client.post(
                     invoke_url,
-                    headers={"Authorization": f"Bearer {ANTHROPIC_API_KEY}", "Content-Type": "application/json"},
+                    headers={"Authorization": f"Bearer {BEARER_TOKEN}", "Content-Type": "application/json"},
                     content=json.dumps(payload),
                 )
                 resp.raise_for_status()
@@ -98,7 +120,7 @@ def _identify_with_claude(image_bytes: bytes) -> dict:
     try:
         import anthropic
         client = anthropic.Anthropic(
-            api_key=ANTHROPIC_API_KEY,
+            api_key=DIRECT_API_KEY,
             http_client=_httpx.Client(verify=SSL_VERIFY),
         )
         msg = client.messages.create(
@@ -203,7 +225,7 @@ def identify_book(
             return {"status": "unidentified", "reason": "crop_not_found"}
 
         # 2. Claude Haiku vision
-        vision_result = _identify_with_claude(image_bytes)
+        vision_result = _identify_with_claude(image_bytes, sweep_id)
         title = vision_result.get("title")
         author = vision_result.get("author")
         detected_lang = vision_result.get("language")
