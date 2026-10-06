@@ -55,7 +55,7 @@ async def test_llm(body: TestLLMRequest) -> dict:
 
 
 async def _test_enterprise_gateway(body: TestLLMRequest) -> str:
-    import httpx2
+    import httpx as httpx2
     token = body.bearerToken or body.apiKey or ""
     model = os.environ.get("BEDROCK_MODEL", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
     url = f"{body.baseUrl.rstrip('/')}/model/{model}/invoke"
@@ -76,7 +76,7 @@ async def _test_enterprise_gateway(body: TestLLMRequest) -> str:
 
 
 async def _test_anthropic(api_key: str) -> str:
-    import httpx2
+    import httpx as httpx2
     async with httpx2.AsyncClient(verify=False, timeout=15.0) as client:
         resp = await client.post(
             "https://api.anthropic.com/v1/messages",
@@ -97,7 +97,7 @@ async def _test_anthropic(api_key: str) -> str:
 
 
 async def _test_openai(api_key: str) -> str:
-    import httpx2
+    import httpx as httpx2
     async with httpx2.AsyncClient(verify=False, timeout=15.0) as client:
         resp = await client.post(
             "https://api.openai.com/v1/chat/completions",
