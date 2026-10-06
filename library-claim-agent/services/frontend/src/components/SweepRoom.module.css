@@ -1,0 +1,480 @@
+.root {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  height: 100vh;
+  background: #0f0f1a;
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+/* ─── LEFT PANEL ─────────────────────────────────────────────── */
+.leftPanel {
+  display: flex;
+  flex-direction: column;
+  background: #1a1a2e;
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+
+.topBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.liveDot {
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.liveLabel {
+  font-size: 0.75rem;
+  color: #22c55e;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.topBarTitle {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.5);
+  font-weight: 500;
+}
+
+.endBtn {
+  padding: 0.3rem 0.8rem;
+  background: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.endBtn:hover { opacity: 0.85; }
+
+.processingBadge {
+  font-size: 0.75rem;
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+/* Camera */
+.cameraWrap {
+  position: relative;
+  aspect-ratio: 4/3;
+  background: #000;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.camera {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cameraOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: rgba(255,255,255,0.6);
+  font-size: 0.85rem;
+}
+
+.cameraSpinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255,255,255,0.2);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.cameraError {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.85rem;
+  background: rgba(239,68,68,0.15);
+}
+
+.cameraError span { font-size: 2rem; }
+.cameraError small { font-size: 0.72rem; color: rgba(255,255,255,0.4); max-width: 200px; text-align: center; }
+
+.qualityBanner {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(245,158,11,0.9);
+  color: #1a1a0a;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.watchingBadge {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  color: white;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+}
+
+.recDot {
+  width: 7px;
+  height: 7px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.controlBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  background: rgba(255,255,255,0.08);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.controlBtn:hover { background: rgba(255,255,255,0.14); }
+.controlBtn.muted { background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.4); }
+
+/* Transcript */
+.transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+}
+
+.transcriptHint {
+  color: rgba(255,255,255,0.3);
+  font-size: 0.8rem;
+  text-align: center;
+  margin: auto;
+  font-style: italic;
+}
+
+.msg {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.msgRole {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.agentMsg .msgRole {
+  background: rgba(102,126,234,0.3);
+  color: #a5b4fc;
+}
+
+.userMsg .msgRole {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
+}
+
+.msgText {
+  font-size: 0.83rem;
+  color: rgba(255,255,255,0.85);
+  line-height: 1.45;
+}
+
+/* Input */
+.inputRow {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+
+.textInput {
+  flex: 1;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.83rem;
+}
+
+.textInput::placeholder { color: rgba(255,255,255,0.3); }
+.textInput:focus { outline: none; border-color: rgba(102,126,234,0.6); }
+
+.sendBtn {
+  padding: 0.5rem 0.9rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ─── RIGHT PANEL: Notebook ──────────────────────────────────── */
+.rightPanel {
+  display: flex;
+  flex-direction: column;
+  background: #faf9f6;
+  overflow: hidden;
+}
+
+.notebookHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.75rem;
+  background: white;
+  border-bottom: 2px solid #f0ece4;
+  flex-shrink: 0;
+}
+
+.notebookTitle {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  font-family: 'Georgia', serif;
+}
+
+.notebookDate {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: #888;
+}
+
+.totalBadge {
+  text-align: right;
+  background: linear-gradient(135deg, #667eea15, #764ba215);
+  padding: 0.6rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid #667eea30;
+}
+
+.totalLabel { font-size: 0.72rem; color: #667eea; font-weight: 600; text-transform: uppercase; }
+.totalValue { font-size: 1.3rem; font-weight: 700; color: #1a1a2e; font-family: 'Georgia', serif; }
+
+/* Stats */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border-bottom: 1px solid #e8e4dc;
+  flex-shrink: 0;
+}
+
+.stat {
+  padding: 0.75rem 1.25rem;
+  border-right: 1px solid #e8e4dc;
+  text-align: center;
+}
+.stat:last-child { border-right: none; }
+
+.statNum { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; font-family: 'Georgia', serif; }
+.statLabel { font-size: 0.72rem; color: #888; margin-top: 0.1rem; }
+
+/* Progress */
+.progressWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1.75rem;
+  background: #fff8e8;
+  border-bottom: 1px solid #f0e8cc;
+  flex-shrink: 0;
+}
+
+.progressBar {
+  flex: 1;
+  height: 4px;
+  background: #f0e8cc;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.progressLabel { font-size: 0.75rem; color: #b45309; font-weight: 600; white-space: nowrap; }
+
+/* Book list */
+.bookList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  height: 100%;
+  color: #bbb;
+  font-size: 0.85rem;
+  font-style: italic;
+  text-align: center;
+}
+
+.emptyState span { font-size: 2.5rem; }
+
+/* Book entry */
+.bookEntry {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border-left: 3px solid transparent;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: transform 0.15s, box-shadow 0.15s;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bookEntry:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.08); }
+
+.identified { border-left-color: #22c55e; }
+.unidentified { border-left-color: #d1d5db; background: #fafafa; }
+.appraisal { border-left-color: #f59e0b; }
+.processing { border-left-color: #6366f1; }
+
+.bookNum {
+  width: 22px;
+  height: 22px;
+  background: #f0f0f0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #888;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.bookInfo { flex: 1; min-width: 0; }
+
+.bookTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Georgia', serif;
+}
+
+.bookAuthor { font-size: 0.78rem; color: #666; margin-top: 0.1rem; }
+.bookDim { font-size: 0.72rem; color: #aaa; margin-top: 0.15rem; }
+
+.skeleton { color: #a0aec0; font-style: italic; font-family: system-ui; }
+.unknown { color: #ccc; font-style: italic; font-family: system-ui; font-size: 0.82rem; }
+
+.bookPrice { text-align: right; flex-shrink: 0; }
+.priceValue { font-size: 0.9rem; font-weight: 700; color: #1a6b3c; font-family: 'Georgia', serif; }
+.priceSource { font-size: 0.68rem; color: #aaa; margin-top: 0.1rem; }
+.pricingDot { font-size: 0.72rem; color: #6366f1; font-style: italic; }
+.appraisalTag {
+  display: inline-block;
+  background: #fff8e8;
+  color: #b45309;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #f0e8cc;
+}
+
+/* Items */
+.itemsSection { margin-top: 1rem; }
+.itemsTitle { font-size: 0.8rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 0.5rem; }
+.itemTags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.itemTag {
+  background: #f0f0f0;
+  color: #555;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+}

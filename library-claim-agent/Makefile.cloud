@@ -1,0 +1,192 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Makefile.cloud — GPU / Production workflow
+#
+# Usage:
+#   make -f Makefile.cloud setup    # first-time GPU bringup
+#   make -f Makefile.cloud start    # start all 10 services
+#   make -f Makefile.cloud stop
+#   make -f Makefile.cloud logs
+#
+# Differences from the default Makefile:
+#   - Targets the full docker-compose.yml (10 services, LiveKit, heavy workers)
+#   - Adds GPU verification step
+#   - Adds Ollama model pull targets
+#   - Adds worker-specific build targets (3.5 GB PyTorch images)
+#   - Adds MinIO / S3 helpers
+# ══════════════════════════════════════════════════════════════════════════════
+
+.PHONY: setup start stop restart logs health build-workers build-all \
+        pull-ollama-8b pull-ollama-70b verify-gpu shell-ollama \
+        backup-db restore-db clean clean-all
+
+DC := $(shell \
+    if docker compose version >/dev/null 2>&1; then echo "docker compose"; \
+    elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; \
+    else echo "MISSING"; fi)
+
+PROJECT = library-claim-agent
+BASE_IMAGES = postgres:16-alpine redis:7-alpine livekit/livekit-server:latest \
+              python:3.12-slim node:20-alpine nginx:alpine
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+setup: verify-gpu _check build start pull-ollama-8b
+	@echo ""
+	@echo "✓ GPU setup complete!"
+	@echo "  App:  http://localhost:3000"
+	@echo "  API:  http://localhost:8000/health"
+	@echo ""
+	@echo "  To switch to llama3.1:70b:"
+	@echo "    make -f Makefile.cloud pull-ollama-70b"
+	@echo "    OLLAMA_MODEL=llama3.1:70b make -f Makefile.cloud restart"
+
+# ─── GPU check ───────────────────────────────────────────────────────────────
+
+verify-gpu:
+	@echo "→ Verifying NVIDIA GPU..."
+	@nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null || \
+		(echo "ERROR: nvidia-smi failed. Install NVIDIA Container Toolkit:" && \
+		 echo "  https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html" && \
+		 exit 1)
+	@echo "  GPU OK"
+	@docker run --rm --gpus all nvidia/cuda:12.0.0-base-ubuntu22.04 nvidia-smi -L 2>/dev/null || \
+		(echo "ERROR: --gpus all not working inside Docker. Check toolkit install." && exit 1)
+	@echo "  CUDA in Docker OK"
+
+# ─── Build ───────────────────────────────────────────────────────────────────
+
+build:
+	@echo "→ Building all service images..."
+	@$(DC) build --parallel
+	@echo "✓ Build complete"
+
+build-workers:
+	@echo "→ Building heavy worker images (3.5 GB each, ~15 min)..."
+	@$(DC) build worker-book-id worker-pricing worker-measurement
+	@echo "✓ Worker images built"
+
+build-vision-gpu:
+	@echo "→ Rebuilding vision with CUDA support..."
+	@YOLO_DEVICE_OVERRIDE=cuda $(DC) build vision
+	@echo "✓ Vision (CUDA) built"
+
+# ─── Start / Stop ────────────────────────────────────────────────────────────
+
+start:
+	@$(DC) up -d
+	@echo "✓ All 10 services started"
+
+stop:
+	@$(DC) down
+
+restart: stop start
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+
+logs:
+	@$(DC) logs -f --tail=100
+
+logs-workers:
+	@$(DC) logs -f worker-book-id worker-pricing worker-measurement
+
+logs-agents:
+	@$(DC) logs -f agents
+
+logs-vision:
+	@$(DC) logs -f vision
+
+# ─── Health ──────────────────────────────────────────────────────────────────
+
+health:
+	@echo "Service health:"
+	@curl -sf http://localhost:8000/health 2>/dev/null && echo "  ✓ backend" || echo "  ✗ backend"
+	@$(DC) exec -T postgres pg_isready -q 2>/dev/null && echo "  ✓ postgres" || echo "  ✗ postgres"
+	@$(DC) exec -T redis redis-cli ping 2>/dev/null | grep -q PONG && echo "  ✓ redis" || echo "  ✗ redis"
+	@curl -sf http://localhost:3000 >/dev/null 2>/dev/null && echo "  ✓ frontend" || echo "  ✗ frontend"
+	@$(DC) exec -T vision python -c "import onnxruntime as ort; print('  ✓ vision ONNX device:', ort.get_device())" 2>/dev/null || echo "  ✗ vision"
+	@$(DC) exec -T worker-book-id python -c "import paddle; print('  ✓ paddleocr device:', paddle.device.get_device())" 2>/dev/null || echo "  ✗ worker-book-id (PaddleOCR)"
+
+# ─── Ollama models ───────────────────────────────────────────────────────────
+
+pull-ollama-8b:
+	@echo "→ Pulling llama3.1:8b into Ollama (~4.7 GB)..."
+	@$(DC) exec ollama ollama pull llama3.1:8b
+	@echo "✓ llama3.1:8b ready"
+
+pull-ollama-70b:
+	@echo "→ Pulling llama3.1:70b into Ollama (~40 GB — needs 48 GB VRAM)..."
+	@$(DC) exec ollama ollama pull llama3.1:70b
+	@echo "✓ llama3.1:70b ready"
+
+pull-ollama-vision:
+	@echo "→ Pulling llava:13b for vision-capable local inference..."
+	@$(DC) exec ollama ollama pull llava:13b
+	@echo "✓ llava:13b ready"
+
+list-ollama-models:
+	@$(DC) exec ollama ollama list
+
+shell-ollama:
+	@$(DC) exec -it ollama ollama
+
+# ─── Database ────────────────────────────────────────────────────────────────
+
+shell-db:
+	@$(DC) exec postgres psql -U $${POSTGRES_USER:-claim_user} $${POSTGRES_DB:-library_claim}
+
+backup-db:
+	@mkdir -p backups
+	@$(DC) exec -T postgres pg_dump -U $${POSTGRES_USER:-claim_user} $${POSTGRES_DB:-library_claim} \
+		> backups/claimagent_$$(date +%Y%m%d_%H%M%S).sql
+	@echo "✓ DB backed up to backups/"
+
+restore-db:
+	@test -n "$(FILE)" || (echo "Usage: make -f Makefile.cloud restore-db FILE=backups/xxx.sql" && exit 1)
+	@$(DC) exec -T postgres psql -U $${POSTGRES_USER:-claim_user} $${POSTGRES_DB:-library_claim} < $(FILE)
+	@echo "✓ DB restored from $(FILE)"
+
+# ─── MinIO ───────────────────────────────────────────────────────────────────
+
+minio-setup:
+	@echo "→ Creating MinIO buckets..."
+	@$(DC) exec minio mc alias set local http://localhost:9000 $${MINIO_ACCESS_KEY} $${MINIO_SECRET_KEY}
+	@$(DC) exec minio mc mb --ignore-existing local/claim-frames
+	@$(DC) exec minio mc mb --ignore-existing local/claim-packets
+	@echo "✓ MinIO buckets ready"
+
+# ─── Sweep profile helpers ───────────────────────────────────────────────────
+
+profile-slow:
+	@echo "SWEEP_PROFILE=slow" >> .env
+	@echo "YOLO_DEVICE_OVERRIDE=cpu" >> .env
+	@echo "→ Set to slow profile (CPU ONNX, Claude Haiku). Restart to apply."
+
+profile-standard:
+	@echo "SWEEP_PROFILE=standard" >> .env
+	@echo "YOLO_DEVICE_OVERRIDE=cuda" >> .env
+	@echo "LLM_PROVIDER=ollama" >> .env
+	@echo "→ Set to standard profile (CUDA YOLO, Ollama 8b). Restart to apply."
+
+profile-hot:
+	@echo "SWEEP_PROFILE=hot" >> .env
+	@echo "YOLO_DEVICE_OVERRIDE=cuda" >> .env
+	@echo "LLM_PROVIDER=ollama" >> .env
+	@echo "→ Set to hot profile (CUDA YOLO, Ollama 70b). Restart + pull-ollama-70b."
+
+# ─── Cleanup ─────────────────────────────────────────────────────────────────
+
+clean:
+	@$(DC) -p $(PROJECT) down --volumes --remove-orphans 2>/dev/null || true
+	@docker images --filter "reference=$(PROJECT)-*" -q 2>/dev/null | xargs -r docker rmi -f 2>/dev/null || true
+	@echo "✓ Project removed"
+
+clean-all: clean
+	@for img in $(BASE_IMAGES); do docker rmi "$$img" 2>/dev/null || true; done
+	@echo "✓ All images removed"
+
+# ─── Internal ────────────────────────────────────────────────────────────────
+
+_check:
+	@command -v docker >/dev/null 2>&1 || (echo "ERROR: Docker not found" && exit 1)
+	@[ "$(DC)" != "MISSING" ] || (echo "ERROR: Docker Compose v2 not found" && exit 1)
+	@test -f .env || (cp .env.example .env && echo "→ .env created from .env.example — edit before proceeding")

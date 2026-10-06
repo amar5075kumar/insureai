@@ -1,0 +1,155 @@
+# Minimal local dev stack — skips livekit + 3 PyTorch workers (~10GB saved)
+# Uses pre-built images from: docker compose build (or scripts/build-local.sh)
+#
+# Usage:
+#   ./scripts/build-local.sh          # build the 6 images
+#   docker compose -f docker-compose.local.yml up -d
+#   open http://localhost:3000
+
+services:
+  postgres:
+    image: library-claim-agent-postgres:latest
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-claim_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-library_claim}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-claim_user}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: library-claim-agent-redis:latest
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    image: library-claim-agent-backend:latest
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-claim_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-library_claim}
+      REDIS_URL: redis://redis:6379/0
+      FRAMES_STORAGE: filesystem
+      FRAMES_DIR: /app/frame_data
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-devsecret}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SWEEP_PROFILE: slow
+      PYTHONPATH: /app:/repo_root
+    volumes:
+      - ./models:/app/models:ro
+      - ./output:/repo_root/output:ro
+      - ./config:/repo_root/config:ro
+      - frame_data:/app/frame_data
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  agents:
+    image: library-claim-agent-agents:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-claim_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-library_claim}
+      REDIS_URL: redis://redis:6379/0
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      BEDROCK_BASE_URL: ${BEDROCK_BASE_URL:-}
+      BEDROCK_MODEL: ${BEDROCK_MODEL:-}
+      BEDROCK_AUTH_TYPE: ${BEDROCK_AUTH_TYPE:-aws}
+      SWEEP_PROFILE: slow
+      FRAMES_DIR: /app/frame_data
+      PYTHONPATH: /app:/repo_root
+    volumes:
+      - ./output:/repo_root/output:ro
+      - ./config:/repo_root/config:ro
+      - frame_data:/app/frame_data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+
+  vision:
+    image: library-claim-agent-vision:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-claim_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-library_claim}
+      REDIS_URL: redis://redis:6379/0
+      FRAMES_STORAGE: filesystem
+      FRAMES_DIR: /app/frame_data
+      SWEEP_PROFILE: ${SWEEP_PROFILE:-slow}
+      PYTHONPATH: /app:/repo_root
+      ORT_NUM_THREADS: "4"
+      OMP_NUM_THREADS: "4"
+    volumes:
+      - ./config:/repo_root/config:ro
+      - frame_data:/app/frame_data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-lite:
+    image: library-claim-agent-worker-lite:latest
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-claim_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-library_claim}
+      REDIS_URL: redis://redis:6379/0
+      FRAMES_DIR: /app/frame_data
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      BEDROCK_BASE_URL: ${BEDROCK_BASE_URL:-}
+      BEDROCK_MODEL: ${BEDROCK_MODEL:-us.anthropic.claude-haiku-4-5-20251001-v1:0}
+      BEDROCK_AUTH_TYPE: ${BEDROCK_AUTH_TYPE:-aws}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      SSL_VERIFY: "false"
+      PYTHONPATH: /app
+    volumes:
+      - frame_data:/app/frame_data:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    image: library-claim-agent-frontend:latest
+    environment:
+      VITE_API_URL: http://localhost:8000
+      VITE_WS_URL: ws://localhost:8000
+      VITE_CAMERA_MODE: ${CAMERA_MODE:-direct}
+      VITE_LIVEKIT_URL: ws://localhost:7880
+      VITE_FRAME_INTERVAL_MS: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  frame_data:

@@ -1,0 +1,43 @@
+# Secrets
+.env
+certs/
+
+# Model weights (large files — download via scripts/download_models.sh)
+models/
+!models/.gitkeep
+
+# Ground truth data (contains your real room measurements — keep private)
+ground_truth/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Node / Frontend
+node_modules/
+services/frontend/dist/
+
+# Docker
+.docker/
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Build instructions (internal planning docs)
+/build_instructions/
+
+# Claude Code session files
+/.claude/
+.claude/

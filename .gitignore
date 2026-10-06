@@ -1,0 +1,62 @@
+# ── Secrets & credentials ────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+certs/
+
+# Claude Code local settings (contains API tokens)
+.claude/settings.local.json
+.mcp.json
+
+# MCP server binaries & dependencies (may contain embedded credentials)
+.claude/mcp-servers/
+.claude/mcp-servers/*/node_modules
+.claude/mcp-servers/*/node_modules/
+
+# Model weights (large — download via scripts/download_models.sh)
+models/
+!models/.gitkeep
+
+# Ground truth data (private room measurements)
+ground_truth/
+
+# ── Python ───────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+dist/
+build/
+*.egg
+.pytest_cache/
+htmlcov/
+.coverage
+*.log
+
+# ── Node / Frontend ───────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+services/frontend/dist/
+
+# ── Docker ────────────────────────────────────────────────────────────
+.docker/
+
+# ── Prodstack working state ───────────────────────────────────────────
+*/.prodstack/context/
+
+# ── IDE ───────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ── OS ────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# Research and planning docs (internal)
+/research/
